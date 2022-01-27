@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -47,7 +48,7 @@ void * compute_prime(void * data) {
   	pthread_exit(EXIT_SUCCESS);
 }
 
-void compute_prime_interval(mpz_class a, mpz_class b, int round, int nb_threads) {
+double compute_prime_interval(mpz_class a, mpz_class b, int round, int nb_threads) {
 	
 	std::vector<mpz_class> * primes = new std::vector<mpz_class>;
 	primes->reserve(400000);
@@ -64,11 +65,10 @@ void compute_prime_interval(mpz_class a, mpz_class b, int round, int nb_threads)
 	td.count = a;
 	td.max = b;
 	td.primes = primes;
-	
+
 	Chrono c(true);
 
 	// Run the threads, each thread will pick a number in the interval when he is ready
-	std::cout << "starting threads" << std::endl;
 	for(int i = 0; i < nb_threads; i++)
 		pthread_create(&ids[i], NULL, &compute_prime, &td);
 
@@ -84,42 +84,47 @@ void compute_prime_interval(mpz_class a, mpz_class b, int round, int nb_threads)
 		// std::cout << val << std::endl;
 	}
 	
-	std::cerr << c.get() << " sec, count:" << primes->size() << std::endl;
+	std::cerr << c.get() << "\tsec \t count:" << primes->size() << std::endl;
     delete(primes);
+	return c.get();
 }
 
 int main(int argc, char** argv) {
 	if (argc < 3) {
 		std::cerr << "usage: executable <nb_threads> <filepath> [rounds]" << std::endl; 
-		// return EXIT_FAILURE;
+		return EXIT_FAILURE;
 	}
 	int rounds = 10;
 	if (argc >= 4) {
-		// rounds = atoi(argv[3]);
+		rounds = atoi(argv[3]);
 	}
 
-	// int nb_thread = atoi(argv[1]);
-	int nb_thread = 8;
+	int nb_thread = atoi(argv[1]);
 
 
 	std::ifstream file;
-	// file.open(argv[2]);
-	file.open("../tests/1_simple.txt");
+	file.open(argv[2]);
+	double total_time = 0;
+	int line_nb = 0;
 	if (file.is_open()) {
-		// std::string line, s_a, s_b;
-		// mpz_t a, b; 
-		// while (getline(file, line)) {
-
-		// mpz_set_str(a, s_a.c_str(), 10);
-		// mpz_set_str(b, s_b.c_str(), 10);
-		// std::cout << s_b << std::endl;
-		compute_prime_interval(mpz_class(400), mpz_class(40000000), rounds, nb_thread);
-		// }
+		std::string line;
+		while (getline(file, line)) {
+			std::istringstream iss(line);
+			std::string val;
+			iss >> val;
+			mpz_class low(val);
+			iss >> val;
+			mpz_class high(val);
+			std::cerr << line_nb << "\t";
+			line_nb++;
+			total_time += compute_prime_interval(low, high, rounds, nb_thread);
+		}
 		file.close();
+
+		std::cerr << total_time << " sec total" << std::endl;
 	} else {
 		std::cerr << "error: can\'t open file at : " << argv[2] << std::endl;
 		return EXIT_FAILURE;
 	}
-	
 	return EXIT_SUCCESS;
 }
