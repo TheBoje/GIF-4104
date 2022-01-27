@@ -1,14 +1,20 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(GIF-4104-TP1 VERSION 0.1.0)
 
+find_library(gmp gmp)
+find_library(gmpxx gmpxx)
 find_package(Threads REQUIRED)
+
+include_directories(include)
 
 include(CTest)
 enable_testing()
 
-add_executable(GIF-4104-TP1 src/main.c)
+add_executable(GIF-4104-TP1 
+    src/miller-rabin-gmp.cpp
+    src/main.cpp)
 
-target_link_libraries(GIF-4104-TP1 PRIVATE Threads::Threads)
+target_link_libraries(GIF-4104-TP1 PRIVATE Threads::Threads gmp gmpxx)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
