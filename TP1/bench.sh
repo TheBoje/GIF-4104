@@ -1,0 +1,1 @@
+for i in {1..3}; do build/GIF-4104-TP1 8 tests/$1_*.txt; done

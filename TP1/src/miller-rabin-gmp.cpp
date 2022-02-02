@@ -27,7 +27,6 @@ mpz_class pow_mod(mpz_class a, mpz_class x, const mpz_class& n)
 	// 	x >>= 1;
 	// 	a = a*a % n;
 	// }
-
 	return r;
 }
 
@@ -116,7 +115,4 @@ static bool miller_rabin_backend(const mpz_class& n, const size_t rounds, gmp_ra
 /*
  * The Miller-Rabin front end.
  */
-bool prob_prime(const mpz_class& n, const size_t rounds, gmp_randclass *rnd)
-{
-    return miller_rabin_backend(n > 0 ? n : -n, rounds, rnd);
-}
+bool prob_prime(const mpz_class& n, const size_t rounds, gmp_randclass *rnd) { return miller_rabin_backend(n > 0 ? n : -n, rounds, rnd); }
