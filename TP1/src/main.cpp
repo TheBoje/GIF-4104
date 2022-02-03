@@ -59,12 +59,12 @@ void * compute_prime_worker_improved(void * data) {
 		pthread_mutex_lock(&mutex_intervals);
 		if (tdi->intervals->size() < 2) {
 			pthread_mutex_unlock(&mutex_intervals);
-            delete(rnd);
-			pthread_exit(EXIT_SUCCESS);
+			break;
 		}
 		mpz_class from = tdi->intervals->at(0);
 		mpz_class to = tdi->intervals->at(1);
-		tdi->intervals->erase(tdi->intervals->begin(), tdi->intervals->begin() + 1);
+		tdi->intervals->erase(tdi->intervals->begin());
+		tdi->intervals->erase(tdi->intervals->begin());
 		pthread_mutex_unlock(&mutex_intervals);
 
 		for (mpz_class i = from; mpz_cmp(i.get_mpz_t(), to.get_mpz_t()) < 0; i++) {
@@ -72,13 +72,15 @@ void * compute_prime_worker_improved(void * data) {
 				worker_primes.push_back(i);
 			}
 		}
-
-		if (worker_primes.size() > 0) {
-			pthread_mutex_lock(&mutex_primes);
-			tdi->primes->insert(tdi->primes->end(), worker_primes.begin(), worker_primes.end());
-			pthread_mutex_unlock(&mutex_primes);
-		}
 	} 
+
+	if (worker_primes.size() > 0) {
+		pthread_mutex_lock(&mutex_primes);
+		tdi->primes->insert(tdi->primes->end(), worker_primes.begin(), worker_primes.end());
+		pthread_mutex_unlock(&mutex_primes);
+	}
+	delete(rnd);
+	pthread_exit(EXIT_SUCCESS);
 }
 
 std::vector<mpz_class>* compute_prime(std::vector<mpz_class> * intervals, int rounds, int nb_threads) {
