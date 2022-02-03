@@ -12,21 +12,11 @@
  *
  * This algorithm is taken from Bruce Schneier's book "Applied Cryptography".
  * See http://en.wikipedia.org/wiki/Modular_exponentiation
- *
- * TODO: See if GMP already provides this functionality.
  */
 mpz_class pow_mod(mpz_class a, mpz_class x, const mpz_class& n)
 {
 	mpz_class r = 1;
 	mpz_powm(r.get_mpz_t(), a.get_mpz_t(), x.get_mpz_t(), n.get_mpz_t());
-	// TODO
-	// while (x > 0) { 
-	// 	if ((x & 1) == 1) {
-	// 		r = a*r % n;
-	// 	}
-	// 	x >>= 1;
-	// 	a = a*a % n;
-	// }
 	return r;
 }
 

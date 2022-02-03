@@ -20,10 +20,11 @@ struct thread_data {
 
 struct thread_data_improved {
 	std::vector<mpz_class> * intervals;
+	std::vector<mpz_class> * primes;
 	int rounds;
 };
 
-pthread_mutex_t mutex_vec;
+pthread_mutex_t mutex_primes;
 pthread_mutex_t mutex_count;
 pthread_mutex_t mutex_intervals;
 
@@ -41,9 +42,9 @@ void * compute_prime_worker(void * data) {
 
 		// if the number is considered as prime, write it in the result vector
 		if (res) {
-			pthread_mutex_lock(&mutex_vec);
+			pthread_mutex_lock(&mutex_primes);
 			td->primes->push_back(target);
-			pthread_mutex_unlock(&mutex_vec);
+			pthread_mutex_unlock(&mutex_primes);
 		}
 	}
   	pthread_exit(EXIT_SUCCESS);
@@ -51,40 +52,43 @@ void * compute_prime_worker(void * data) {
 
 void * compute_prime_worker_improved(void * data) {
 	struct thread_data_improved * tdi = (struct thread_data_improved *) data;
-	std::vector<mpz_class> * worker_primes = new std::vector<mpz_class>;
+	std::vector<mpz_class> worker_primes = {};
 	gmp_randclass *rnd = initialize_seed();
 
-	for (;;) {
+	while (true) {
 		pthread_mutex_lock(&mutex_intervals);
 		if (tdi->intervals->size() < 2) {
 			pthread_mutex_unlock(&mutex_intervals);
-			return worker_primes;
+            delete(rnd);
+			pthread_exit(EXIT_SUCCESS);
 		}
 		mpz_class from = tdi->intervals->at(0);
-		tdi->intervals->erase(tdi->intervals->begin());
-		mpz_class to = tdi->intervals->at(0);
-		tdi->intervals->erase(tdi->intervals->begin());
+		mpz_class to = tdi->intervals->at(1);
+		tdi->intervals->erase(tdi->intervals->begin(), tdi->intervals->begin() + 1);
 		pthread_mutex_unlock(&mutex_intervals);
 
 		for (mpz_class i = from; mpz_cmp(i.get_mpz_t(), to.get_mpz_t()) < 0; i++) {
 			if (prob_prime(i, tdi->rounds, rnd)) {
-				worker_primes->push_back(i);
+				worker_primes.push_back(i);
 			}
+		}
+
+		if (worker_primes.size() > 0) {
+			pthread_mutex_lock(&mutex_primes);
+			tdi->primes->insert(tdi->primes->end(), worker_primes.begin(), worker_primes.end());
+			pthread_mutex_unlock(&mutex_primes);
 		}
 	} 
 }
 
-double compute_prime(std::vector<mpz_class> * intervals, int rounds, int nb_threads) {
-	std::cout << "compute_prime" << std::endl;
+std::vector<mpz_class>* compute_prime(std::vector<mpz_class> * intervals, int rounds, int nb_threads) {
 	std::vector<mpz_class> * primes = new std::vector<mpz_class>;
-	Chrono c(false);
-	while (intervals->size() > 0) {
-		// Declared threads and  Init mutex
-		pthread_t ids[nb_threads];
-		
-		pthread_mutex_init(&mutex_count, NULL);
-		pthread_mutex_init(&mutex_vec, NULL);
+	pthread_mutex_init(&mutex_count, NULL);
+	pthread_mutex_init(&mutex_primes, NULL);
+	// Declared threads and  Init mutex
+	pthread_t ids[nb_threads];
 
+	while (intervals->size() > 0) {
 		// Create data structure shared by all the threads
 		struct thread_data td;
 		td.rounds = rounds;
@@ -95,8 +99,6 @@ double compute_prime(std::vector<mpz_class> * intervals, int rounds, int nb_thre
 		td.primes = primes;
 		td.rnd = initialize_seed();
 
-		c.resume();
-
 		// Run the threads, each thread will pick a number in the interval when he is ready
 		for(int i = 0; i < nb_threads; i++)
 			pthread_create(&ids[i], NULL, &compute_prime_worker, &td);
@@ -104,56 +106,33 @@ double compute_prime(std::vector<mpz_class> * intervals, int rounds, int nb_thre
 		for(int i = 0; i < nb_threads; i++) {
 			pthread_join(ids[i], NULL);
 		}
-
-		c.pause();
-
 	}
 	std::sort(primes->begin(), primes->end());
-	// for (mpz_class i : *primes) {
-	// 	std::cout << i << " ";
-	// }
-	// std::cout << std::endl;
-	std::cout << "count: " << primes->size() << std::endl;
-    delete(primes);
-	return c.get();
+    return primes;
 }
 
-double compute_prime_improved(std::vector<mpz_class> * intervals, int rounds, int nb_threads) {
-	std::cout << "compute_prime_improved" << std::endl;
+std::vector<mpz_class>* compute_prime_improved(std::vector<mpz_class> * intervals, int rounds, int nb_threads) {
 	std::vector<mpz_class> * primes = new std::vector<mpz_class>;
-	std::vector<mpz_class> * from_workers[nb_threads];
 	pthread_mutex_init(&mutex_intervals, NULL);
+	pthread_mutex_init(&mutex_primes, NULL);
 	pthread_t ids[nb_threads];
-	struct thread_data_improved tdi;
+
+	struct thread_data_improved tdi{};
 	tdi.intervals = intervals;
 	tdi.rounds = rounds;
-
-	Chrono c(true);
+	tdi.primes = primes;
 
 	for (int i = 0; i < nb_threads; i++) {
 		pthread_create(&ids[i], NULL, &compute_prime_worker_improved, &tdi);
 	}
 
 	for (int i = 0; i < nb_threads; i++) {
-		pthread_join(ids[i], (void **)&(from_workers[i]));
-	}
-
-	c.pause(); // TODO stop now or after merging primes ?
-
-	// Merge from_workers array of primes (which is a vector of mpz_class), into `primes`
-	for (int i = 0; i < nb_threads; i++) {
-		primes->insert(primes->end(), from_workers[i]->begin(), from_workers[i]->end());
-		delete(from_workers[i]);
+		pthread_join(ids[i], NULL);
 	}
 
 	std::sort(primes->begin(), primes->end());
-	// for (mpz_class p : *primes) {
-	// 	std::cout << p << " ";
-	// }
-	// std::cout << std::endl;
-	std::cout << "count: " << primes->size() << std::endl;
-	delete(primes);
-	return c.get();
+
+	return primes;
 }
 
 int main(int argc, char** argv) {
@@ -162,11 +141,15 @@ int main(int argc, char** argv) {
 		std::cerr << "usage: executable <nb_threads> <filepath> [rounds]" << std::endl; 
 		return EXIT_FAILURE;
 	}
-	unsigned int rounds = 10;
-	if (argc >= 4) {
-		rounds = atoi(argv[3]);
-	}
-	unsigned int nb_thread = atoi(argv[1]);
+	unsigned int rounds = 5;
+	unsigned int nb_thread;
+
+    nb_thread = atoi(argv[1]);
+    if (argc >= 4) {
+        rounds = atoi(argv[3]);
+    }
+
+	
 
 	/* Read input file
 	 * Expected format is the following :
@@ -176,7 +159,6 @@ int main(int argc, char** argv) {
 	 */
 	std::ifstream file;
 	file.open(argv[2]);
-	// int line_nb = 0;
 	if (file.is_open()) {
 		std::vector<mpz_class> * intervals = new std::vector<mpz_class>();
 		std::string line;
@@ -191,10 +173,18 @@ int main(int argc, char** argv) {
 		file.close();
 
 		// Total processing time of prime-computing only
-		// double total_time = compute_prime(intervals, rounds, nb_thread);
-		double total_time = compute_prime_improved(intervals, rounds, nb_thread);
-		std::cerr << total_time << " sec total" << std::endl;
+		std::vector<mpz_class> * primes;
+		Chrono c(true);
+		// primes = compute_prime(intervals, rounds, nb_thread);
+		primes = compute_prime_improved(intervals, rounds, nb_thread);
+		c.pause();
+		for (mpz_class p : *primes) {
+			std::cout << p << " ";
+		}
+		std::cout << std::endl;
+		std::cerr << c.get() << std::endl;
 		delete(intervals);
+		delete(primes);
 	} else {
 		std::cerr << "error: can\'t open file at : " << argv[2] << std::endl;
 		return EXIT_FAILURE;

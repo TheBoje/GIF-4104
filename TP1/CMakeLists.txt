@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(GIF-4104-TP1 VERSION 0.1.0)
 
+set(CMAKE_CXX_COMPILE_FEATURES "-03")
+
 find_library(gmp gmp)
 find_library(gmpxx gmpxx)
 find_package(Threads REQUIRED)
