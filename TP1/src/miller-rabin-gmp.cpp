@@ -28,7 +28,7 @@ mpz_class pow_mod(mpz_class a, mpz_class x, const mpz_class& n)
 gmp_randclass * initialize_seed()
 {
 	gmp_randclass *res = new gmp_randclass(gmp_randinit_default);
-	// Just seed with the current time
+	// Seed with the current time
 	res->seed(time(NULL));
 	return res;
 }
@@ -105,4 +105,6 @@ static bool miller_rabin_backend(const mpz_class& n, const size_t rounds, gmp_ra
 /*
  * The Miller-Rabin front end.
  */
-bool prob_prime(const mpz_class& n, const size_t rounds, gmp_randclass *rnd) { return miller_rabin_backend(n > 0 ? n : -n, rounds, rnd); }
+bool prob_prime(const mpz_class& n, const size_t rounds, gmp_randclass *rnd) { 
+	return miller_rabin_backend(n > 0 ? n : -n, rounds, rnd); 
+}
