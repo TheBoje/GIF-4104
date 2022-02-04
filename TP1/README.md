@@ -128,7 +128,16 @@ FIN thread
 * Ram : 16 Go, 2400 MT/s
 
 # Résultats expérimentaux
-
+<!-- Vos résultats expérimentaux avec des courbes de speedup et/ou d'efficacité -->
 # Analyse des résultats
+<!-- 
+    Une analyse de vos résultats, y compris une discussion de vos succès ou de vos échecs; 
+    Votre programme fonctionne-t-il correctement?
+    Avez-vous maximisé l'indépendance de vos fils d'exécution?
+    Avez-vous minimisé l'usage de mutex, lorsque c'est possible?
+    Avez-vous tenu compte des contraintes de mémoire cache pour optimiser votre performance?
+    Avez-vous profité des options d'optimisation du compilateur?
+-->
 
 # Conclusion
+<!-- Et des pistes d'améliorations possibles -->

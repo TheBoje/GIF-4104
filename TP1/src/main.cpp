@@ -224,7 +224,7 @@ std::vector<mpz_class>* compute_prime(std::vector<mpz_class> * intervals, int ro
 * return : vector of unordered likely primes found in the intervals. The pointer needs to be deleted
 * by the caller. 
 *
-* This function relies on `compute_prime_improved8worker` function.
+* This function relies on `compute_prime_improved_worker` function.
 */
 std::vector<mpz_class>* compute_prime_improved(std::vector<mpz_class> * intervals, int rounds, int nb_threads) {
 	// Init result vector and mutex
@@ -249,6 +249,40 @@ std::vector<mpz_class>* compute_prime_improved(std::vector<mpz_class> * interval
 	for (int i = 0; i < nb_threads; i++)
 		pthread_join(ids[i], NULL);
 	
+	return primes; // property of caller
+}
+
+/*
+* Find every (likely) primes in the `intervals`.
+* intervals : vector of values representing intervals, [lower_bound1, upper_bound1, lower_bound2,
+* upper_bound2, ...].
+* rounds : number of miller-rabin approximation rounds, the higher the more precision, but the more
+* compute time.
+*
+* return : vector of unordered likely primes found in the intervals. The pointer needs to be deleted
+* by the caller.
+*/
+std::vector<mpz_class>* compute_prime_unthreaded(std::vector<mpz_class> * intervals, int rounds) {
+	// Init result vector and random number generator
+	std::vector<mpz_class> * primes = new std::vector<mpz_class>;
+	gmp_randclass *rnd = initialize_seed();
+	// Loop through every intervals
+	while (intervals->size() > 2) {
+		// Lower bound
+		mpz_class from = intervals->at(0);
+		// Upper bound
+		mpz_class to = intervals->at(1);
+		// Remove them `from` and `to` from the intervals
+		intervals->erase(intervals->begin());
+		intervals->erase(intervals->begin());
+		// Loop Through every values of the interval
+		for (mpz_class i = from; mpz_cmp(i.get_mpz_t(), to.get_mpz_t()) < 0; i++) {
+			if (prob_prime(i, rounds, rnd)) { // If the target value is likely prime, store it in result vector
+				primes->push_back(i);
+			}
+		}
+	}
+
 	return primes; // property of caller
 }
 
@@ -297,7 +331,7 @@ int main(int argc, char** argv) {
 		std::vector<mpz_class> * primes;
 		// Compute time
 		Chrono c(true);
-		// Launch computation
+		// Launch computation for every intervals
 		//primes = compute_prime(intervals, rounds, nb_thread);
 		primes = compute_prime_improved(intervals, rounds, nb_thread);
 		c.pause();
