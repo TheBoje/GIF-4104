@@ -129,6 +129,10 @@ FIN thread
 
 # Résultats expérimentaux
 <!-- Vos résultats expérimentaux avec des courbes de speedup et/ou d'efficacité -->
+
+![](images/8_test-time_vs_thread_count.png)
+
+![](images/8_efficiency_speedup.png)
 # Analyse des résultats
 <!-- 
     Une analyse de vos résultats, y compris une discussion de vos succès ou de vos échecs; 
@@ -139,8 +143,7 @@ FIN thread
     Avez-vous profité des options d'optimisation du compilateur?
 -->
 
-![](images/8_test-time_vs_thread_count.png)
 
-![](images/8_efficiency_speedup.png)
+
 # Conclusion
 <!-- Et des pistes d'améliorations possibles -->
