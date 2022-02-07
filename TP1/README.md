@@ -135,22 +135,35 @@ FIN thread
 * Ram : 16 Go, 2400 MT/s
 
 # Résultats expérimentaux
-<!-- Vos résultats expérimentaux avec des courbes de speedup et/ou d'efficacité -->
 
-![](images/8_test-time_vs_thread_count.png)
+|![](images/1_simple_time_vs_thread_count.png)|![](images/1_efficiency_speedup.png)|
+|--|--|
+|![](images/2_intervalles_courts_time_vs_thread_count.png)|![](images/2_efficiency_speedup.png)|
+|![](images/3_vari1B_time_vs_thread_count.png)|![](images/3_efficiency_speedup.png)|
+|![](images/4_vari2B_time_vs_thread_count.png)|![](images/4_efficiency_speedup.png)|
+|![](images/5_recouvrement_time_vs_thread_count.png)|![](images/5_efficiency_speedup.png)|
+|![](images/6_nombres_petits_time_vs_thread_count.png)|![](images/6_efficiency_speedup.png)|
+|![](images/7_longs_time_vs_thread_count.png)|![](images/7_efficiency_speedup.png)|
+|![](images/8_test-time_vs_thread_count.png)| ![](images/8_efficiency_speedup.png)|
 
-![](images/8_efficiency_speedup.png)
 # Analyse des résultats
-<!-- 
-    Une analyse de vos résultats, y compris une discussion de vos succès ou de vos échecs; 
-    Votre programme fonctionne-t-il correctement?
-    Avez-vous maximisé l'indépendance de vos fils d'exécution?
-    Avez-vous minimisé l'usage de mutex, lorsque c'est possible?
-    Avez-vous tenu compte des contraintes de mémoire cache pour optimiser votre performance?
-    Avez-vous profité des options d'optimisation du compilateur?
--->
 
+Les résultats expérimentaux ci-dessus ont été obtenus avec via le script `bench.sh` et via la compilation avec `gcc version 11.1.0` et `CMakeLists.txt`. Concernant la compilation, nous avons uniquement utilisé `-03`. Ce flag demande au compilateur de réaliser un maximum d'optimisation pour maximiser les performances.
 
+Pour les deux algorithmes que nous avons mis en place, nous avons fait attention à isoler les tests de primalité entre chacun des threads, afin de maximiser les performances concernant l'utilisation du cache. En effet, le cache n'est invalidé que dans le cas de la récupération d'une nouvelle opération à réaliser (nouveau nombre ou intervalle), le reste du temps, les données ne sont pas partagées, maximisant les performances sur ce point. Cependant, étant donné que nous utilisons des grands nombres, ces derniers sont potentiellement trop grand pour rentrer dans la mémoire cache. C'est l'inconvénient d'implémenter l'algorithme avec GMP. 
+
+Lors du développement de ces solutions, nous avons dans un premier temps orienté notre pensée vers la parrallélisation du calcul uniquement. C'est-à-dire que nous avons fait un algorithme qui est le plus rapide (et évidemment parrallélisé) pour trouver tous les nombres potentiellement premier d'un intervalle, pour ensuite appliquer cet algorithme à chaque intervalle donné en entrée. Répondant au problème, en donnant à la fois les résultats attendus (quantité de nombres premiers potentiels cohérent) ainsi qu'un temps de calcul plus intéressant que sans parrallélisation. Nous avons remarqué en testant notre algorithme que dans le cas de nombreux petits intervalles, le temps d'initialisation des threads était trop important par rapport au temps de calcul de l'intervalle. Nous avons donc trouvé un deuxième algorithme. Pour celui ci, nous avons plutôt pensé à isoler le traitement d'un intervalle par thread, et de limiter le nombre d'appels système. 
+
+Pour l'analyse des résultats, nous avons décidé de nous concentrer sur l'analyse du fichier 8_test, qui nous semble le plus représentatif d'une utilisation réelle de la parrallélisation. Pour ces donnés, nous avons comparé le temps de traitement entre nos deux algorithmes parrallèles, avec l'approche séquentielle. Nous avons aussi calculé le speedup et l'efficacité.
+
+Nous constatons que le temps de calcul des deux algorithmes parallèles semblent converger vers 500sec de temps de calcul des nombres premiers dans les intervalles du fichier à partir de 4 fils d'exécution ce qui est dû à la machine contenant 4 coeurs physiques. A partir de cette convergence, nous remarquons une diminution d'un peu plus de 60% du temps de calcul pour l'algorithme 1 comme l'algorithme 2. Nous pouvons aussi voir cette amélioration avec le speedup des deux algorithmes valant respectivement 2.6 et 2.9. La machine de test ne possédant que 4 coeurs physiques, l'utilsation de 4 ou 8 threads est presque égale (l'hyperthreading ne permettant que ~15% de performances supplémentaires, ce gain est diminué par l'énergie dissipée qui limite indirectement l'horloge interne du CPU. Le CPU a une fréquence bien plus important quand il y a peu de threads lancés (~4GHz pour 1 thread), que quand il y en a beaucoup (~2.4GHz pour 8 threads)). L'efficacité de ces deux algorithmes est satisfaisante, environ 0.8 à 4 threads pour les deux (1 étant l'idéal), cependant cette métrique diminue jusqu'à 0.3 à 8 threads, ce qui semble plutôt provenir des performances de l'hyperthreading que de la collision des processus (eg. attente d'un mutex).
+
+Un autre fichier qui nous semble intéressant d'étudier est le fichier 1_simple. Ce dernier contient 3 intervalles dont un qui est particulièrement petit. D'après le graphique de temps d'execution, on remarque que les algorithmes de parrallélisation sont plus performants que la méthode sans threads. Cependant, l'algorithme 1 est plus rapide que le 2, alors qu'il avait presque 1 minute de retard pour le traitement du fichier 8_test avec 8 threads. Ce résultat est très intéressant parce qu'il permet de mettre en avant le problème de l'algorithme 2 quant à la parrallélisation d'un nombre d'intervalles inférieur au nombre de threads lancés. En effet, l'algorithme 2 laisse chaque thread traiter un intervalle seul, donc si le nombre d'intervalles à traiter est plus grand que le nombre de threads, on perd de la puissance de calcul. De plus, tous les threads devront attendre la fin de celui qui aura l'intervalle le plus long à traiter. L'algorithme 2 est donc aussi performant avec 3 thread que 8 pour ce fichier. Du côté de l'algorithme 1, le speedup vaut 2 pour 4 threads (0.5 d'efficacité), qui sont des résultats corrects. 
+
+Les performances des deux algorithmes par rapport au calcul séquentiel sont intéressantes, cependant la performance est aussi déterminée par la nature des données à traiter. En effet, nous avons remarqué que l'algorithme 1 est plus rapide pour traiter peu d'intervalles contenant beaucoup de valeurs alors que l'algorithme 2 est plus performant pour traiter de nombreux intervalles. 
+
+Pour ces deux approches, les fils d'execution font appel à des mutex pour communiquer, mais leur utilisation est limitée au strict minimum pour empêcher les thread d'attendre les autres au lieu de traiter les données.
 
 # Conclusion
-<!-- Et des pistes d'améliorations possibles -->
+
+Avec la mise en place de ces deux algorithmes de parrallélisation, nous avons réussi à diminuer drastiquement le temps de traitement par rapport à une approche séquentielle. En effet, avec la parrallélisation sur 4 threads, le temps de calcul est passé de 21 minutes à seulement 8 minutes. Découvrant la librairie pthread et gmp, nous avons pu mettre en pratique les notions étudiées en cours, notamment de mutex. Cependant, il serait possible d'obtenir des performances encore plus intéressantes. En effet, la machine que nous avons utilisé pour tester nos algorithmes ne possède que 4 coeurs physique, limitant rapidement les possibilités. Il serait intéressant de créer un algorithme qui au lieu de partager le travail pour chaque coeur, pourrait distribuer ces tâches à des ordinateurs sur un réseau, qui eux mêmes pourraient parralléliser le calcul sur leurs coeurs. Impliquant beaucoup plus de mise en place, cette méthode aurait surement beaucoup plus de latence et de temps de traitement constant, mais avec un nombre d'ordinateur suffisament grand, et surtout un nombre d'intervalles à traiter important, les performances seraient plus intéressantes. 

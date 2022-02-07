@@ -2,7 +2,8 @@
 
 echo  "thread,file,time";
 
-
-for threads in {1..8}; do
-    echo -e "${threads},8,\c" && build/GIF-4104-TP1 ${threads} tests/8_*.txt > /dev/null;
-done 
+for file in {1..8}; do
+    for threads in {1..8}; do
+        echo -e "${threads},${file},\c" && build/GIF-4104-TP1 ${threads} tests/${file}_*.txt > /dev/null;
+    done 
+done
