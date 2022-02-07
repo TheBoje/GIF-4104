@@ -17,7 +17,7 @@
 #include "miller-rabin-gmp.hpp"
 
 /* 
-* Data shared from `compute_prime` to each `compute_prime_worker` thread.
+* Data shared from `compute_prime_1` to each `compute_prime_1_worker` thread.
 * primes : return vector of values. Each thread add their found primes (with mutex `mutex_primes`).
 * rnd : random number generator needed by miller rabin algorithm. Share amoung threads, prevents
 * from re-allocating it each time. Thread safe (see GMP documentation). Initialised from
@@ -30,7 +30,7 @@
 * requires the possession of the mutex `mutex_count`.
 * max : upper bound of the interval. Read only (no mutex).
 */
-struct thread_data {
+struct thread_data_1 {
 	std::vector<mpz_class> * primes;
 	gmp_randclass *rnd;
   	int rounds;
@@ -40,41 +40,44 @@ struct thread_data {
 
 
 /*
-* Data shared from `compute_prime_improved` to each `compute_prime_improved_worker` thread.
-* intervals : stack of intervals. Shared amoung every worker, it need to be accessed (read & write)
-* with a mutex (`mutex_intervals`). When a thread is free, it take the 2 first values (as lower and
-* upper bounds of an interval) and can compute primes from them.
+* Data shared from `compute_prime_2` to each `compute_prime_2_worker` thread.
+* intervals : array of intervals. Shared amoung every worker. When a thread is free, it read the
+* next 2 values from `index` (as lower and upper bounds of an interval) and can compute primes from
+* them. 
 * primes : return vector of values. Shared amoung every worker, it need to be accessed (read &
 * write) with a mutex (`mutex_primes`). When the stack of job is empty, before stopping the worker
 * will take the mutex and write his found primes into `primes`. Initialised as empty.
+* rounds : number of rounds of miller-rabin algorithm to do. The higher the more accurate the result
+* is, but the more expensive (time) it is.
+* index : index of the next available interval. Initialised at 0, worker need the mutex
+* `mutex_index` to read OR write. `-1` value means not more intervals.
 */
-struct thread_data_improved {
+struct thread_data_2 {
 	std::vector<mpz_class> * intervals;
 	std::vector<mpz_class> * primes;
 	int rounds;
+	int index;
 };
 
-// To read/write thread_data.primes or thread_data_improved.primes
+// To read/write thread_data_1.primes or thread_data_2.primes
 pthread_mutex_t mutex_primes;
-// To read/write thread_data.count
+// To read/write thread_data_1.count
 pthread_mutex_t mutex_count;
-// To read/write thread_data.intervals or thread_data_improved.intervals
+// To read/write thread_data_1.intervals
 pthread_mutex_t mutex_intervals;
+// To read/write thread_data_2.index
+pthread_mutex_t mutex_index;
 
 /*
 * Thread function to find every primes between two mpz_class values.
-* data : `thread_data` pointeur
-* Process thread_data.count to thread_data.max values, push each potential prime value into
-* thread_data.prime until there is no more values to test. 
+* data : `thread_data_1` pointer
+* Process thread_data_1.count to thread_data_1.max values, push each potential prime value into
+* thread_data_1.prime until there is no more values to test. 
 * Requires mutex_primes & mutex_count initialised.
-*
-* NOTE: This is the first approch we took to the problem. As explained in the README.md, this method
-* is not the most performant as we need to create then join thread for each intervals. This is works
-* well for few intervals, but relies on many sys calls in the long run.
 */
-void * compute_prime_worker(void * data) {
+void * compute_prime_1_worker(void * data) {
 	// Retrieve data provided from master
-  	struct thread_data * td = (struct thread_data *)data;
+  	struct thread_data_1 * td = (struct thread_data_1 *)data;
 	std::vector<mpz_class> worker_primes{};
 	// While there is numbers to test
 	for (;;) {
@@ -87,17 +90,9 @@ void * compute_prime_worker(void * data) {
 		// Run the Miller-Rabin algorithm  
 		bool res = prob_prime(target, td->rounds, td->rnd);
 
-		// if the number is (likely) prime, write it in the result vector
-		/* 
-		 * NOTE: this creates a lot of mutex system calls, maybe creating a local vector of found
-		 * primes and dumping this vector at the end of the worker's life would only create 1 system
-		 * call - but this double memory usage.
-		 */
+		// if the number is (likely) prime, write it in the local vector
 		if (res) {
 			worker_primes.push_back(target);
-			pthread_mutex_lock(&mutex_primes);
-			td->primes->push_back(target);
-			pthread_mutex_unlock(&mutex_primes);
 		}
 	}
 
@@ -114,20 +109,15 @@ void * compute_prime_worker(void * data) {
 
 /*
 * Thread function to find every primes between two mpz_class values.
-* data : `thread_data_improved` pointeur
-* Process thread_data_improved.intervals values (intervals.at(i) to intervals.at(i+1)) until every
+* data : `thread_data_2` pointeur
+* Process thread_data_2.intervals values (intervals.at(index) to intervals.at(index+1)) until every
 * intervals value are processed. When there are no more intervals, dump found potential primes into
-* thread_data_improved.primes.
-* Requires mutex_primes & mutex_intervals initialised.
-*
-* NOTE: this version a cleaner than the first one `compute_prime_worker`, yet it still has small
-* issues. The main one being the load not being equaly shared amoung thread. For example, the input
-* contains some small intervals and a giant one, we need to wait until the giant one to be
-* processed. 
+* thread_data_2.primes.
+* Requires mutex_primes & mutex_index initialised.
 */
-void * compute_prime_improved_worker(void * data) {
+void * compute_prime_2_worker(void * data) {
 	// Retrieve data from master
-	struct thread_data_improved * tdi = (struct thread_data_improved *) data;
+	struct thread_data_2 * tdi = (struct thread_data_2 *) data;
 	// Local primes found by the worker. To be merge with tdi.primes when the worker is done
 	std::vector<mpz_class> worker_primes = {};
 	gmp_randclass *rnd = initialize_seed();
@@ -135,18 +125,24 @@ void * compute_prime_improved_worker(void * data) {
 	// While the are intervals to process
 	while (true) {
 		// Take a new interval of values, if no more intervals, stop.
-		pthread_mutex_lock(&mutex_intervals);
-		if (tdi->intervals->size() < 2) {
-			pthread_mutex_unlock(&mutex_intervals);
+		pthread_mutex_lock(&mutex_index);
+		if (tdi->index == -1) {
+			pthread_mutex_unlock(&mutex_index);
 			break;
 		}
 		// Take the new interval
-		mpz_class from = tdi->intervals->at(0);
-		mpz_class to = tdi->intervals->at(1);
-		// Remove the interval from the queue
-		tdi->intervals->erase(tdi->intervals->begin()); 
-		tdi->intervals->erase(tdi->intervals->begin());
-		pthread_mutex_unlock(&mutex_intervals);
+		mpz_class from, to;
+		try {
+			from = tdi->intervals->at(tdi->index);
+			to = tdi->intervals->at(tdi->index + 1);
+		} catch (std::out_of_range & oor) {
+			tdi->index = -1;
+			pthread_mutex_unlock(&mutex_index);
+			break;
+		}
+		// Bump index for other workers
+		tdi->index+=2;
+		pthread_mutex_unlock(&mutex_index);
 		
 		// Process each value in the interval
 		for (mpz_class i = from; mpz_cmp(i.get_mpz_t(), to.get_mpz_t()) < 0; i++) {
@@ -177,10 +173,10 @@ void * compute_prime_improved_worker(void * data) {
 * return : vector of unordered likely primes found in the intervals. The pointer needs to be deleted
 * by the caller. 
 *
-* This function relies on `compute_prime_worker` function. For each intervals, launch `nb_threads`
+* This function relies on `compute_prime_1_worker` function. For each intervals, launch `nb_threads`
 * to find every likely primes.
 */
-std::vector<mpz_class>* compute_prime(std::vector<mpz_class> * intervals, int rounds, int nb_threads) {
+std::vector<mpz_class>* compute_prime_1(std::vector<mpz_class> * intervals, int rounds, int nb_threads) {
 	// Init result vector and mutex
 	std::vector<mpz_class> * primes = new std::vector<mpz_class>;
 	pthread_mutex_init(&mutex_count, NULL);
@@ -189,20 +185,24 @@ std::vector<mpz_class>* compute_prime(std::vector<mpz_class> * intervals, int ro
 	// Declared threads 
 	pthread_t ids[nb_threads];
 	// For each intervals
-	while (intervals->size() > 0) {
+	for (int j = 0; j < intervals->size(); j+=2) {
 		// Create data structure shared by amoung the threads
-		struct thread_data td;
+		struct thread_data_1 td;
 		td.rounds = rounds;
-		td.count = intervals->at(0);
-		td.max = intervals->at(1);
-		intervals->erase(intervals->begin());
-		intervals->erase(intervals->begin());
+		td.count = intervals->at(j);
+		td.max = intervals->at(j+1);
 		td.primes = primes;
 		td.rnd = initialize_seed();
 
 		// Run the threads, each thread will pick a number in the interval when he is ready
+		/*
+		* NOTE: Creating nb_threads for each interval is expensive, mostly when there is a lot of
+		* small intervals. If it is the type of input data you have, maybe consider using
+		* `compute_prime_2` which provides better performances for this case (but worst for few big
+		* sized intervals). 
+		*/
 		for(int i = 0; i < nb_threads; i++)
-			pthread_create(&ids[i], NULL, &compute_prime_worker, &td);
+			pthread_create(&ids[i], NULL, &compute_prime_1_worker, &td);
 
 		// Wait for all thread to finish their job
 		for(int i = 0; i < nb_threads; i++)
@@ -215,8 +215,7 @@ std::vector<mpz_class>* compute_prime(std::vector<mpz_class> * intervals, int ro
 /*
 * Find every (likely) primes in the `intervals`, threaded on `nb_threads`.
 * intervals : vector of values representing intervals, [lower_bound1, upper_bound1, lower_bound2,
-* upper_bound2, ...]. Improved version of `compute_prime` function, as it creates only `nb_threads`
-* and not `nb_threads` per interval.
+* upper_bound2, ...].
 * rounds : number of miller-rabin approximation rounds, the higher the more precision, but the more
 * compute time.
 * nb_threads : number of parallel threads launched.
@@ -224,26 +223,27 @@ std::vector<mpz_class>* compute_prime(std::vector<mpz_class> * intervals, int ro
 * return : vector of unordered likely primes found in the intervals. The pointer needs to be deleted
 * by the caller. 
 *
-* This function relies on `compute_prime_improved_worker` function.
+* This function relies on `compute_prime_2_worker` function.
 */
-std::vector<mpz_class>* compute_prime_improved(std::vector<mpz_class> * intervals, int rounds, int nb_threads) {
+std::vector<mpz_class>* compute_prime_2(std::vector<mpz_class> * intervals, int rounds, int nb_threads) {
 	// Init result vector and mutex
 	std::vector<mpz_class> * primes = new std::vector<mpz_class>;
-	pthread_mutex_init(&mutex_intervals, NULL);
+	pthread_mutex_init(&mutex_index, NULL);
 	pthread_mutex_init(&mutex_primes, NULL);
 
 	// Declare threads
 	pthread_t ids[nb_threads];
 
 	// Create thread data shared amoung every threads
-	struct thread_data_improved tdi{};
+	struct thread_data_2 tdi{};
 	tdi.intervals = intervals;
 	tdi.rounds = rounds;
 	tdi.primes = primes;
+	tdi.index = 0;
 
 	// Launch threads
 	for (int i = 0; i < nb_threads; i++)
-		pthread_create(&ids[i], NULL, &compute_prime_improved_worker, &tdi);
+		pthread_create(&ids[i], NULL, &compute_prime_2_worker, &tdi);
 	
 	// Wait for every threads to finish
 	for (int i = 0; i < nb_threads; i++)
@@ -267,18 +267,16 @@ std::vector<mpz_class>* compute_prime_unthreaded(std::vector<mpz_class> * interv
 	std::vector<mpz_class> * primes = new std::vector<mpz_class>;
 	gmp_randclass *rnd = initialize_seed();
 	// Loop through every intervals
-	while (intervals->size() > 2) {
+	for (int i = 0; i < intervals->size(); i+=2) {
 		// Lower bound
-		mpz_class from = intervals->at(0);
+		mpz_class from = intervals->at(i);
 		// Upper bound
-		mpz_class to = intervals->at(1);
+		mpz_class to = intervals->at(i+1);
 		// Remove them `from` and `to` from the intervals
-		intervals->erase(intervals->begin());
-		intervals->erase(intervals->begin());
 		// Loop Through every values of the interval
-		for (mpz_class i = from; mpz_cmp(i.get_mpz_t(), to.get_mpz_t()) < 0; i++) {
-			if (prob_prime(i, rounds, rnd)) { // If the target value is likely prime, store it in result vector
-				primes->push_back(i);
+		for (mpz_class j = from; mpz_cmp(j.get_mpz_t(), to.get_mpz_t()) < 0; j++) {
+			if (prob_prime(j, rounds, rnd)) { // If the target value is likely prime, store it in result vector
+				primes->push_back(j);
 			}
 		}
 	}
@@ -332,8 +330,9 @@ int main(int argc, char** argv) {
 		// Compute time
 		Chrono c(true);
 		// Launch computation for every intervals
-		//primes = compute_prime(intervals, rounds, nb_thread);
-		primes = compute_prime_improved(intervals, rounds, nb_thread);
+		// primes = compute_prime_unthreaded(intervals, rounds);
+		// primes = compute_prime_1(intervals, rounds, nb_thread);
+		primes = compute_prime_2(intervals, rounds, nb_thread);
 		c.pause();
 		// Print every found likely primes in order
 		std::sort(primes->begin(), primes->end());

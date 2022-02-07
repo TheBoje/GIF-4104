@@ -13,7 +13,7 @@ Pour ce TP, nous avons dû parallèliser la recherche de nombres premiers dans p
 Pour parallèliser le programme nous avons testé deux approches différentes :
 
 1. Chaque thread prend le nombre à traiter dans l'intervalle dès que celui-ci à fini de calculer le nombre précédent.
-2. Chaque thread à un intervalle qui lui est attribué (utile pour les fichiers avec beaucoup d'intervalles mais inutile pour un fichier avec 2 ou 3 intervalles).
+2. Chaque thread à un intervalle qui lui est attribué (pertinant pour les fichiers avec beaucoup d'intervalles mais pas pour un fichier avec 2 ou 3 intervalles).
 
 ## Modification du code de l'implémentation de Miller Rabin par Christian Stigen Larsen
 
