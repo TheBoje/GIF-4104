@@ -146,5 +146,8 @@ FIN thread
     Avez-vous profité des options d'optimisation du compilateur?
 -->
 
+![](images/8_test-time_vs_thread_count.png)
+
+![](images/8_efficiency_speedup.png)
 # Conclusion
 <!-- Et des pistes d'améliorations possibles -->
