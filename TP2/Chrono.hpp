@@ -37,7 +37,7 @@ public:
 
     /*! \brief Return the current chronograph count value.
 
-    The elapsesd time is returned as a double precision floating point 
+    The elapsed time is returned as a double precision floating point 
     number of seconds.
     */
     inline double get(void) {
