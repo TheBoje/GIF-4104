@@ -7,7 +7,7 @@ SRCH=miller-rabin-gmp.hpp \
 
 OBJ=$(SRC:.cpp=.o)
 CXX=icc
-CXXFLAGS=-g -O2 -fopenmp -lgmp -lgmpxx -Wall
+CXXFLAGS=-g -Wall -pedantic -O2 -fopenmp -lgmp -lgmpxx -Wall
 
 main: $(OBJ)
 	$(CXX) $(CXXFLAGS) -o main $(OBJ)

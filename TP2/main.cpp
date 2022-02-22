@@ -76,7 +76,9 @@ std::vector<mpz_class>* compute_prime(std::vector<std::pair<mpz_class, mpz_class
 		 * refactor for this. I'm not sure if an int would be enough to not overflow, with merged
 		 * intervals too. For now, this is giving good performances. If more is needed, this can be
 		 * a good place to look into.
-		*/  
+		 * Note: it seems to be possible to iterate over an std::vector<T> with openMP parallelism,
+		 * it would be the way to improve this.
+		*/
 		for (mpz_class item = pair.first; item < pair.second; item++) {
 			if (prob_prime(item, rounds, rnd)) { // Add found prime in the local array
 				local_primes.push_back(item);
@@ -142,7 +144,7 @@ int main(int argc, char** argv) {
 		// Print every found likely primes in order
 		std::sort(primes->begin(), primes->end());
 		for (mpz_class p : *primes) {
-			std::cout << p << " ";
+			std::cout << p << std::endl;
 		}
 		
 		// Time to compute
