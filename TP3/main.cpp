@@ -165,7 +165,6 @@ int main(int argc, char** argv) {
 	if (lRank == 0) {
 		lA = MatrixRandom(lMatSize, lMatSize);
 		lB = lA;
-		// std::cout << "Random Matrix:\n" << lA << std::endl;
 	}
 
 	MPI::COMM_WORLD.Bcast(&lB(0, 0), lMatSize * lMatSize, MPI::DOUBLE, 0);
@@ -177,9 +176,7 @@ int main(int argc, char** argv) {
 	lTEnd = MPI_Wtime();
 
 	if (lRank == 0) {
-		// std::cout << "Inverse Matrix:\n" << lB << std::endl;
 		Matrix lDot = multiplyMatrix(lA, lB);
-		// std::cout << "Sum:\n" << lDot << std::endl;
 		std::cout << "Matrix size: " << lA.cols() << std::endl;
 		std::cout << "Error: " << lDot.getDataArray().sum() - lMatSize << std::endl;
 		std::cerr << lTEnd - lTStart << std::endl;

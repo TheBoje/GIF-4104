@@ -1,6 +1,5 @@
 #!/bin/bash
 
-echo "Compiling...";
 make;
 
 echo  "proc,mat_size,time";
