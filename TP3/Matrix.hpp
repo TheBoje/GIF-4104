@@ -15,9 +15,9 @@ class Matrix {
 public:
 	// Construire matrice iRows x iCols et initialiser avec des 0.
 	Matrix(std::size_t iRows, std::size_t iCols)
-		: mData(0., iRows * iCols)
-		, mRows(iRows)
-		, mCols(iCols) { }
+		: mRows(iRows)
+		, mCols(iCols)
+		, mData(0., iRows * iCols) { }
 
 	// Affecter une matrice de même taille; s'assurer que les tailles sont identiques.
 	Matrix& operator=(const Matrix& iMat) {
@@ -27,16 +27,24 @@ public:
 	}
 
 	// Accéder à la case (i, j) en lecture/écriture.
-	inline double& operator()(std::size_t iRow, std::size_t iCol) { return mData[(iRow * mCols) + iCol]; }
+	inline double& operator()(std::size_t iRow, std::size_t iCol) {
+		return mData[(iRow * mCols) + iCol];
+	}
 
 	// Accéder à la case (i, j) en lecture seulement.
-	inline const double& operator()(size_t iRow, size_t iCol) const { return mData[(iRow * mCols) + iCol]; }
+	inline const double& operator()(size_t iRow, size_t iCol) const {
+		return mData[(iRow * mCols) + iCol];
+	}
 
 	// Retourner le nombre de colonnes.
-	inline std::size_t cols(void) const { return mCols; }
+	inline std::size_t cols(void) const {
+		return mCols;
+	}
 
 	// Retourner le nombre de lignes.
-	inline std::size_t rows(void) const { return mRows; }
+	inline std::size_t rows(void) const {
+		return mRows;
+	}
 
 	// Retourner le tableau d'une colonne de la matrice.
 	std::valarray<double> getColumnCopy(size_t iCol) const {
@@ -75,10 +83,14 @@ public:
 	}
 
 	// Accéder au tableau interne de la matrice en lecture/écriture.
-	std::valarray<double>& getDataArray(void) { return mData; }
+	std::valarray<double>& getDataArray(void) {
+		return mData;
+	}
 
 	// Accéder au tableau interne de la matrice en lecture seulement.
-	const std::valarray<double>& getDataArray(void) const { return mData; }
+	const std::valarray<double>& getDataArray(void) const {
+		return mData;
+	}
 
 	// Permuter deux rangées de la matrice.
 	Matrix& swapRows(size_t iR1, size_t iR2);

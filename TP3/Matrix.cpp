@@ -54,7 +54,9 @@ std::string Matrix::str(void) const {
 // Construire une matrice identité.
 MatrixIdentity::MatrixIdentity(size_t iSize)
 	: Matrix(iSize, iSize) {
-	for (size_t i = 0; i < iSize; ++i) { (*this)(i, i) = 1.0; }
+	for (size_t i = 0; i < iSize; ++i) {
+		(*this)(i, i) = 1.0;
+	}
 }
 
 // Construire une matrice aléatoire [0,1) iRows x iCols.
