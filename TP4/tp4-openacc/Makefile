@@ -1,11 +1,10 @@
-SRC=Matrix.cpp \
-	main.cpp
+SRC=main.cpp
 
 OBJ=$(SRC:.cpp=.o)
 CXX=mpic++
 LXX=mpirun
-CXXFLAGS=-g -Wall -pedantic
-LXXFLAGS=-np 4
+CXXFLAGS=-g -Wall -pedantic -fopenacc
+LXXFLAGS=-np 1
 
 DEFAULT: main
 
