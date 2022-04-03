@@ -1,15 +1,15 @@
-SRC=main.cpp
+SRC=Matrix.cpp \
+	main.cpp
 
 OBJ=$(SRC:.cpp=.o)
-CXX=mpic++
-LXX=mpirun
-CXXFLAGS=-g -Wall -pedantic -fopenacc
+CXX=nvc++
+CXXFLAGS=-acc=host
 LXXFLAGS=-np 1
 
 DEFAULT: main
 
 run: main
-	$(LXX) $(LXXFLAGS) main 256
+	./main
 
 main: $(OBJ)
 	$(CXX) $(CXXFLAGS) -o main $(OBJ)
