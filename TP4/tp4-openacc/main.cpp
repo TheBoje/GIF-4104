@@ -13,8 +13,9 @@ void invertSequential(Matrix& iA) {
 	MatrixConcatCols lAI(iA, MatrixIdentity(iA.rows()));
 
 	// traiter chaque rangée
-    #pragma acc kernels
+    #pragma acc data copy(lAI)
     {
+
         for (size_t k = 0; k < iA.rows(); ++k) {
             // trouver l'index p du plus grand pivot de la colonne k en valeur absolue
             // (pour une meilleure stabilité numérique).
@@ -36,7 +37,7 @@ void invertSequential(Matrix& iA) {
                 lAI.swapRows(p, k);
 
             double lValue = lAI(k, k);
-            // #pragma acc parallel loop copyin(k) 
+            #pragma acc parallel loop 
             for (size_t j = 0; j < lAI.cols(); ++j) {
                 // On divise les éléments de la rangée k
                 // par la valeur du pivot.
