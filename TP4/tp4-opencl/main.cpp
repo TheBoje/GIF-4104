@@ -275,7 +275,9 @@ int main(int argc, char** argv) {
 	double lSum = 0;
 	for (size_t i = 0; i < lSize; i++) {
 		for (size_t j = 0; j < lSize; j++) {
-			for (size_t k = 0; k < lSize; k++) { lMDot[i * lSize + j] += lMRandom[i * lSize + k] * lMRes[k * lSize + j]; }
+			for (size_t k = 0; k < lSize; k++) {
+				lMDot[i * lSize + j] += lMRandom[i * lSize + k] * lMRes[k * lSize + j];
+			}
 			lSum += lMDot[i * lSize + j];
 		}
 	}
