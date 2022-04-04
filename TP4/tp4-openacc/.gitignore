@@ -1,6 +1,0 @@
-*.a
-main.o
-.vscode
-.idea
-build
-*.o
