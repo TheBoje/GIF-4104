@@ -3,8 +3,7 @@ SRC=Matrix.cpp \
 
 OBJ=$(SRC:.cpp=.o)
 CXX=nvc++
-CXXFLAGS=-acc=host
-LXXFLAGS=-np 1
+CXXFLAGS=-acc=multicore -Minfo
 
 DEFAULT: main
 
