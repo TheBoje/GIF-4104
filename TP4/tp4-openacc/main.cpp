@@ -37,6 +37,7 @@ void invertSequential(Matrix& iA) {
                 lAI.swapRows(p, k);
 
             double lValue = lAI(k, k);
+
             #pragma acc parallel loop 
             for (size_t j = 0; j < lAI.cols(); ++j) {
                 // On divise les éléments de la rangée k
@@ -46,7 +47,7 @@ void invertSequential(Matrix& iA) {
             }
 
             // Pour chaque rangée...
-            // #pragma acc parallel loop copyin(k)
+            #pragma acc parallel loop copyin(k)
             for (size_t i = 0; i < lAI.rows(); ++i) {
                 if (i != k) { // ...différente de k
                     // On soustrait la rangée k
