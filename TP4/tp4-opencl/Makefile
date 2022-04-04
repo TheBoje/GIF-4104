@@ -1,29 +1,19 @@
-hello: hello.cpp
-	g++ -std=c++0x -o hello hello.cpp -lOpenCL
+SRC=main.cpp
 
-# SRC=Matrix.cpp \
-# 	main.cpp
+CXX=g++
+PLATFORM_ID=2
+CXXFLAGS=-Wall -Wpedantic -lOpenCL -DGIF_PLATFORM_ID=$(PLATFORM_ID)
+CXXDEBUGFLAGS=-g -DGIF_DEBUG
 
-# OBJ=$(SRC:.cpp=.o)
-# CXX=mpic++
-# LXX=mpirun
-# CXXFLAGS=-g -Wall -pedantic
-# LXXFLAGS=-np 4
+DEFAULT: main
 
-# DEFAULT: main
+main:
+	$(CXX) $(CXXFLAGS) -o main main.cpp
 
-# run: main
-# 	$(LXX) $(LXXFLAGS) main 256
+debug:
+	$(CXX) $(CXXFLAGS) $(CXXDEBUGFLAGS) -o main main.cpp
 
-# main: $(OBJ)
-# 	$(CXX) $(CXXFLAGS) -o main $(OBJ)
-# 	@echo "Compilation done! Use \"make run\" to run"
+clean:
+	rm main
 
-# %.o : %.cpp
-# 	@echo "Compiling $<"
-# 	${CXX} ${CXXFLAGS} -c $<
-
-# clean:
-# 	rm *.o main
-
-# .PHONY: clean
+.PHONY: clean
