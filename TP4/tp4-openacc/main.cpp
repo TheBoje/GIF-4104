@@ -13,7 +13,7 @@ void invertSequential(Matrix& iA) {
 	MatrixConcatCols lAI(iA, MatrixIdentity(iA.rows()));
 
 	// traiter chaque rangée
-    #pragma acc data copy(lAI)
+    #pragma acc data copy(lAI) copyin(iA)
     {
         for (size_t k = 0; k < iA.rows(); ++k) {
             // trouver l'index p du plus grand pivot de la colonne k en valeur absolue
@@ -59,7 +59,7 @@ void invertSequential(Matrix& iA) {
 
 	// On copie la partie droite de la matrice AI ainsi transformée
 	// dans la matrice courante (this).
-    // #pragma acc parallel loop
+    #pragma acc parallel loop
 	for (unsigned int i = 0; i < iA.rows(); ++i) {
 		iA.getRowSlice(i) = lAI.getDataArray()[std::slice(i * lAI.cols() + iA.cols(), iA.cols(), 1)];
 	}
@@ -72,14 +72,11 @@ Matrix multiplyMatrix(const Matrix& iMat1, const Matrix& iMat2) {
 
 	Matrix lRes(iMat1.rows(), iMat2.cols());
     
-    #pragma acc parallel
-    {
+    #pragma acc parallel loop
+    for (size_t i = 0; i < lRes.rows(); ++i) {
         #pragma acc loop
-        for (size_t i = 0; i < lRes.rows(); ++i) {
-            #pragma acc loop
-            for (size_t j = 0; j < lRes.cols(); ++j) {
-                lRes(i, j) = (iMat1.getRowCopy(i) * iMat2.getColumnCopy(j)).sum();
-            }
+        for (size_t j = 0; j < lRes.cols(); ++j) {
+            lRes(i, j) = (iMat1.getRowCopy(i) * iMat2.getColumnCopy(j)).sum();
         }
     }
 
