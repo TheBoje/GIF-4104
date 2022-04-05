@@ -72,6 +72,10 @@ FOR i = 0 TO AI.rows DO // Copy right side of AI into result
 DONE
 \end{lstlisting}
 
+L'utilisation que nous avons fait d'OpenCL est assez naïve : découvrant le langage, nous avons simplement essayé d'appliquer l'algorithme d'inversion. Pas encore suffisament familier avec les tenants et aboutissants de chacun des paramètres OpenCL, nous avons eu du mal à paramétrer ce dernier pour maximiser les performances. Nous avons par ailleurs remarqué que pour une taille de workgroup plus grande que 128, des erreurs de calculs ont commencé à appaitre, mais nous avons pas réussi à identifier la source de ce problème, c'est pourquoi nous conduirons nos calculs pour des matrix de taille maximum 128 x 128.
+
+D'après les spécifications de la carte graphique utilisée, nous avons décidé d'utiliser un worker group de la taille de la matrice, et donc d'associer une ligne à chacun des worker, ce qui nous a permi d'obtenir les meilleurs résultats. La minimisation de l'accès à la mémoire globale n'a pu être notre priorité, et l'on remarque effectivement que chaque worker accède régulièrement à la mémoire globale ce qui n'est pas obtimal.
+
 \subsection{OpenACC}
 
 % TODO(Vincent)
@@ -89,17 +93,17 @@ DONE
         \hline
         Fréquence CPU & 3.4GHz \\
         \hline
-        C\oe urs physiques & 4 \\
+        C\oe urs (physique / logique) & 4 / 8 \\
         \hline
         Ram & 16 Go, 2400 $MT/s$ \\
         \hline
         GPU & Intel(R) UHD Graphics 620 \\
         \hline
-        OpenCL & version \textbf{3.0} \\
+        OpenCL & version 3.0 \\
         \hline
-        GCC & version \textbf{11.2.0} \\
+        GCC & version 11.2.0 \\
         \hline
-        nvc++ & version \textbf{22.1} \\
+        nvc++ & version 22.1 \\
         \hline
     \end{tabularx}
 \end{center}
@@ -154,48 +158,7 @@ DONE
 
 \section{Analyse}
 
-Tout d'abord, nous avons conduit notre analyse sur l'inversion de matrices de tailles variées. Les
-résultats ayant la même tendance par rapport à la taille, nous avons décidé de nous concentrer seulement
-sur l'inversion d'une matrice 1024x1024 aléatoire (les données brutes pour d'autres tailles sont
-disponibles) dans l'archive.
-
-L'utilisation de MPI, en contraste avec OpenMP, permet d'établir un environnement de travail spécifique
-à chaque processus de calcul. En effet, pour que deux processus communiquement, il ne faut plus simplement
-appeler une fonction, il faut faire une transmission de message. Une des méthodes de transmission de message
-s'appelle le `Broadcast' et est particulièrement couteuse étant donné quelle fait appel à tous les processus.
-MPI possède de nombreux moyens de transmettre et reçevoir des messages, cependant, le `Broadcast' est ce que
-nous avons utilisé pour notre algorithme.
-
-Pour en revenir aux performances de notre algorithme, nous pouvons remarquer avec le premier graphique
-que le temps de calcul pour une matrice 1024 décroit comme attendu quand le nombre de processus augmente.
-Ce comportement est celui attendu étant donné le travail de parallélisation. De plus, on note que le temps
-de calcul initial est assez conséquent (environ 40 secondes), et le minimum obtenu pour 4 processus est
-autour de 16 secondes. Ces résultats sont satifsaisants, mais nous pouvons étudier le speedup et l'efficacité
-pour mieux comprendre les gains en performance.
-
-D'après le graphique, on remarque que pour 4 processus, le speedup atteint 2.5 ce qui est non négligeable pour
-une application parallèle. De plus, l'efficacité atteint 0.6 pour 4 processus, ce qui n'est pas particulièrement
-impressionnant, mais cela reste correct. On peut donc en déduire que la parallélisation de l'algorithme d'inversion
-de matrice selon la méthode de Gauss Jordan est fonctionnelle.
-
-Cependant, il est évident que l'approche naïve du problème ne nous permet pas d'utiliser le plein potentiel de
-parallélisation. En effet, il existe au moins une autre approche pour cette algorithme, dite par "répartition
-cyclique" ou par "pipeline" permettant d'éliminer un maximum les temps d'attente des processus imposés par notre
-approche.
 
 \section{Conclusion}
 
-Avec la prise en main de MPI, nous avons pu mettre en pratique une nouvelle approche de la parallélisation de
-calculs. Dans un premier temps, nous nous sommes lancés sur l'implémentation de la méthode naïve pour l'algorithme
-de Gauss Jordan, avec succès. Même si les résultats se sont montrés satifsaisants, nous avons tenté de mettre en
-place l'algorithme par pipeline, mais rattrapés par le temps, nous n'avons pas eu le temps de l'achever.
-
-Cependant, la méthode de Gauss Jordan n'est pas la seule façon d'inverser une matrice. Par exemple, la méthode de
-\href{https://en.wikipedia.org/wiki/Cayley%E2%80%93Hamilton_theorem}{\textit{\underline{Cayley-Hamilton}}} dont la formule se résume à :\newline
-$A^{-1}=\frac{1}{det(A)}\sum_{k_1, k_2,...,k_n}^{}\prod_{n-1}^{l=1}\frac{(-1)^{k_l+1}}{l^{k_l}k_l!}tr(A^l)^{k_l}$
-\newline
-Aussi, pour les matrices dites \href{https://en.wikipedia.org/wiki/Definite_matrix}{\textit{\underline{positive definite}}},
-l'application de la décomposition de \href{https://en.wikipedia.org/wiki/Cholesky_decomposition}{\textit{\underline{Cholesky}}},
-avec la formule suivante:
-$A^{-1}=(L^*)^{-1}L^{-1}$
 \end{document}
