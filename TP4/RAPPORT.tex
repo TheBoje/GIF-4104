@@ -78,7 +78,60 @@ D'après les spécifications de la carte graphique utilisée, nous avons décid�
 
 \subsection{OpenACC}
 
-% TODO(Vincent)
+Pour la version utilisant OpenACC, nous avons décidé de reprendre le programme séquentiel et d'y ajouter les directives comme il ait conseillé. Nous avons, comme pour le programme OpenCL, décidé de paralléliser la fonction d'inversion de matrice par la méthode de Gauss-Jordan. 
+
+L'algorithme que nous avons mis en place est le suivant : 
+
+\begin{lstlisting}[style=txt]
+AI : Matrix [A I]
+
+// local matrix initialize as identity matrix 
+// concatenated with the AI matrix
+lAI : Identity Matrix [A I] 
+
+// Give lAI and AI matrix as input and output 
+// for every inner parallel sections
+#pragma acc data copy(lAI, AI)
+{
+FOR k = 0 TO AI.rows DO
+    max = abs(lAI[i, k]), pivotIndex = k
+    FOR i = k TO lAI.rows DO // Find greatest pivot for column k
+        IF abs(lAI[i, k]) > max DO
+            max = abs(lAI[i, k]); pivotIndex = i
+        DONE
+    DONE
+
+    IF lIA[pivotIndex, k] == 0 DO throw exception DONE
+
+    IF (pivotIndex != k) AI.swapRows(pivotIndex, k)
+
+    v = lAI[k, k] // Normalisation
+    // Parrallelize the for loop passing lValue and k as output only
+    #pragma acc parallel loop copyin(lValue, k)
+    FOR j = 0 TO lAI.cols DO
+        lAI[k, j] = lAI[k, j] / v
+    DONE
+
+    // Parrallelize the for loop, as k is already present in 
+    // the device memory, we reuse it
+    #pragma acc parallel loop present(k)
+    FOR i = 0 TO lAI.rows DO // For each rows
+        IF i != k DO
+            lAI[i] = lAI[i] - lAI[k] * v
+        DONE
+    DONE
+DONE
+
+#pragma acc parallel loop
+FOR i = 0 TO AI.rows DO // Copy right side of AI into result
+    AI[i] = lAI.getData()[slice(i * lAI.cols + AI.cols, AI.cols, 1)]
+DONE
+}
+\end{lstlisting}
+
+L'avantage de OpenACC est de pouvoir réutiliser le code séquentiel afin de la paralléliser. De plus, ce que OpenACC parrallélise le plus facilement sont les boucles, c'est pour cela que toutes les directives se trouvent aux abords de celles-ci. Avant d'utiliser les directives de parallélisation, nous faisons appel à la directive \textbf{data} qui nous permet de passer les matrices \textbf{lAI} et \textbf{AI} en lecture et écriture à toutes les autres directives de parallélisation inclues dans cette directive \textbf{data}.
+
+Pour la première boucle récupérant l'index du maximum, il aurait été intéressant d'utilisant la clause de réduction sur la fonction \textbf{max}. Cependant, cela est rendu impossible par l'assignation de l'index. Nous avons donc fait le choix de ne pas paralléliser cette boucle, cela aurait été du calcul redondant sur tout les threads ce qui aurait diminué l'efficacité. 
 
 \section{Machine utilisée pour les tests de performance}
 

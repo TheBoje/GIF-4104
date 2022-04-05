@@ -64,7 +64,7 @@ void invertParallel(Matrix& iA) {
 	MatrixConcatCols lAI(iA, MatrixIdentity(iA.rows()));
 
 // traiter chaque rangée
-#pragma acc data copy(lAI)
+#pragma acc data copy(lAI, iA) 
 	{
 		for (size_t k = 0; k < iA.rows(); ++k) {
 			// trouver l'index p du plus grand pivot de la colonne k en valeur absolue
@@ -88,7 +88,7 @@ void invertParallel(Matrix& iA) {
 
 			double lValue = lAI(k, k);
 
-#pragma acc parallel loop
+#pragma acc parallel loop copyin(lValue, k)
 			for (size_t j = 0; j < lAI.cols(); ++j) {
 				// On divise les éléments de la rangée k
 				// par la valeur du pivot.
@@ -97,7 +97,7 @@ void invertParallel(Matrix& iA) {
 			}
 
 // Pour chaque rangée...
-#pragma acc parallel loop copyin(k)
+#pragma acc parallel loop present(k)
 			for (size_t i = 0; i < lAI.rows(); ++i) {
 				if (i != k) { // ...différente de k
 					// On soustrait la rangée k
@@ -107,14 +107,14 @@ void invertParallel(Matrix& iA) {
 				}
 			}
 		}
-	}
 
 // On copie la partie droite de la matrice AI ainsi transformée
 // dans la matrice courante (this).
 #pragma acc parallel	  loop
-	 for (unsigned int i = 0; i < iA.rows(); ++i) {
-		 iA.getRowSlice(i) = lAI.getDataArray()[std::slice(i * lAI.cols() + iA.cols(), iA.cols(), 1)];
-	 }
+		 for (unsigned int i = 0; i < iA.rows(); ++i) {
+			 iA.getRowSlice(i) = lAI.getDataArray()[std::slice(i * lAI.cols() + iA.cols(), iA.cols(), 1)];
+		 }
+	}
 }
 
 // Multiplier deux matrices.
