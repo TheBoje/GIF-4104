@@ -163,6 +163,8 @@ Pour la première boucle récupérant l'index du maximum, il aurait été intér
 
 \section{Résultats obtenus}
 
+\subsection{OpenCL}
+
 \begin{center}
     \begin{tabularx}{\textwidth}{c c}
         \begin{tikzpicture}[scale=0.8, transform shape]
@@ -207,8 +209,37 @@ Pour la première boucle récupérant l'index du maximum, il aurait été intér
     \end{tabularx}
 \end{center}
 
-\newpage
+\subsection{OpenACC}
 
+\begin{figure}
+    \begin{center}
+        \begin{tikzpicture}
+            \begin{axis}[
+                xmode=log,
+                ymode=log,
+                log basis x={2},
+                title={Temps d'exécution vs taille de la matrice},
+                xlabel={Taille de la matrice},
+                ylabel={Temps d'exécution (en s)},
+                xmin=16, xmax=2048,
+                ymin=0, ymax=12,
+                xtick={16,32,64,128, 256, 512, 1024, 2048},
+                ytick={0, 0.01, 0.1, 1, 10},
+                legend pos=north west,
+                ymajorgrids=true,
+                grid style=dashed,
+                xticklabels={16,32,64,128, 256, 512, 1024, 2048},
+                ]
+                \addplot[color=blue, mark=o] coordinates {(16, 0.00338412)(32,0.000947176)(64,0.000740214)(128,0.00253456)(256,0.0116102)(512,0.0637085)(1024,1.0821)(2048,11.1209)};
+                \legend{Temps d'exécution}
+            \end{axis}
+        \end{tikzpicture}
+    \end{center}
+\end{figure}
+    
+    
+    \newpage
+    
 \section{Analyse}
 
 
