@@ -1,0 +1,4 @@
+methode,temps
+openacc,0.00244799
+opencl,0.006876
+sequentiel,0.0735278
