@@ -78,18 +78,18 @@ D'après les spécifications de la carte graphique utilisée, nous avons décid�
 
 \subsection{OpenACC}
 
-Pour la version utilisant OpenACC, nous avons décidé de reprendre le programme séquentiel et d'y ajouter les directives comme il ait conseillé. Nous avons, comme pour le programme OpenCL, décidé de paralléliser la fonction d'inversion de matrice par la méthode de Gauss-Jordan. 
+Pour la version utilisant OpenACC, nous avons décidé de reprendre le programme séquentiel et d'y ajouter les directives comme il ait conseillé. Nous avons, comme pour le programme OpenCL, décidé de paralléliser la fonction d'inversion de matrice par la méthode de Gauss-Jordan.
 
-L'algorithme que nous avons mis en place est le suivant : 
+L'algorithme que nous avons mis en place est le suivant :
 
 \begin{lstlisting}[style=txt]
 AI : Matrix [A I]
 
-// local matrix initialize as identity matrix 
+// local matrix initialize as identity matrix
 // concatenated with the AI matrix
-lAI : Identity Matrix [A I] 
+lAI : Identity Matrix [A I]
 
-// Give lAI and AI matrix as input and output 
+// Give lAI and AI matrix as input and output
 // for every inner parallel sections
 #pragma acc data copy(lAI, AI)
 {
@@ -102,7 +102,6 @@ FOR k = 0 TO AI.rows DO
     DONE
 
     IF lIA[pivotIndex, k] == 0 DO throw exception DONE
-
     IF (pivotIndex != k) AI.swapRows(pivotIndex, k)
 
     v = lAI[k, k] // Normalisation
@@ -112,7 +111,7 @@ FOR k = 0 TO AI.rows DO
         lAI[k, j] = lAI[k, j] / v
     DONE
 
-    // Parrallelize the for loop, as k is already present in 
+    // Parrallelize the for loop, as k is already present in
     // the device memory, we reuse it
     #pragma acc parallel loop present(k)
     FOR i = 0 TO lAI.rows DO // For each rows
@@ -131,7 +130,7 @@ DONE
 
 L'avantage de OpenACC est de pouvoir réutiliser le code séquentiel afin de la paralléliser. De plus, ce que OpenACC parrallélise le plus facilement sont les boucles, c'est pour cela que toutes les directives se trouvent aux abords de celles-ci. Avant d'utiliser les directives de parallélisation, nous faisons appel à la directive \textbf{data} qui nous permet de passer les matrices \textbf{lAI} et \textbf{AI} en lecture et écriture à toutes les autres directives de parallélisation inclues dans cette directive \textbf{data}.
 
-Pour la première boucle récupérant l'index du maximum, il aurait été intéressant d'utilisant la clause de réduction sur la fonction \textbf{max}. Cependant, cela est rendu impossible par l'assignation de l'index. Nous avons donc fait le choix de ne pas paralléliser cette boucle, cela aurait été du calcul redondant sur tout les threads ce qui aurait diminué l'efficacité. 
+Pour la première boucle récupérant l'index du maximum, il aurait été intéressant d'utilisant la clause de réduction sur la fonction \textbf{max}. Cependant, cela est rendu impossible par l'assignation de l'index. Nous avons donc fait le choix de ne pas paralléliser cette boucle, cela aurait été du calcul redondant sur tout les threads ce qui aurait diminué l'efficacité.
 
 \section{Machine utilisée pour les tests de performance}
 
@@ -163,86 +162,49 @@ Pour la première boucle récupérant l'index du maximum, il aurait été intér
 
 \section{Résultats obtenus}
 
-\subsection{OpenCL}
-
 \begin{center}
-    \begin{tabularx}{\textwidth}{c c}
-        \begin{tikzpicture}[scale=0.8, transform shape]
-            \begin{axis}[
-                title={Inversion de matrix 1024, temps vs nombre processus},
-                xlabel={Nombre de processus},
-                ylabel={Temps (sec)},
-                xmin=1, xmax=4,
-                ymin=0, ymax=40,
-                xtick={1, 2, 3, 4},
-                ytick={0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40},
-                legend pos=north west,
-                ymajorgrids=true,
-                grid style=dashed,
-                ]
-                \addplot[color=blue, mark=o] coordinates {(1, 38.8119)(4, 38.8119)};
-                \addplot[color=purple, mark=o] coordinates {(1, 36.7437)(2, 22.4539)(3, 18.0343)(4, 15.5994)};
-
-                \legend{Séquentiel, Parallèle}
-            \end{axis}
-        \end{tikzpicture}
-        &
-        \begin{tikzpicture}[scale=0.8, transform shape]
-            \begin{axis}[
-                title={Speedup \& efficacité vs nombre de threads},
-                xlabel={Nombre de processus},
-                ylabel={Speedup / efficacité},
-                xmin=1, xmax=4,
-                ymin=0, ymax=3,
-                xtick={1,2,3,4},
-                ytick={0, 0.5, 1, 1.5, 2, 2.5, 3},
-                legend pos=north west,
-                ymajorgrids=true,
-                grid style=dashed,
-                ]
-                \addplot[color=blue, mark=o] coordinates {(1, 1)(2, 1.728514868)(3, 2.152115691)(4, 2.488038001)};
-                \addplot[color=red, mark=] coordinates {(1, 1)(2, 0.8642574341)(3, 0.7173718969)(4, 0.6220095004)};
-                \addplot[color=gray, dotted, ultra thick] coordinates {(0, 1)(8, 1)};
-                \legend{Speedup, Efficacité}
-            \end{axis}
-        \end{tikzpicture}
-    \end{tabularx}
+    \begin{tikzpicture}
+        \begin{axis}[
+            xmode=log,
+            ymode=log,
+            log basis x={2},
+            title={Temps d'exécution vs taille de la matrice},
+            xlabel={Taille de la matrice},
+            ylabel={Temps d'exécution (en s)},
+            xmin=16, xmax=2048,
+            ymin=0, ymax=1000,
+            xtick={16,32,64,128, 256, 512, 1024, 2048},
+            ytick={0,0.001, 0.01, 0.1, 1, 10, 100, 1000},
+            legend pos=north west,
+            ymajorgrids=true,
+            grid style=dashed,
+            xticklabels={16,32,64,128, 256, 512, 1024, 2048}
+            ]
+            \addplot[color=blue, mark=o] coordinates {(16, 0.00210473)(32,0.00252273)(64,0.0082381)(128,0.0144982)(256,0.0178835)(512,0.110395)(1024,1.8773)(2048,16.0946)};
+            \addplot[color=red, mark=o] coordinates {(16, 0.004035)(32, 0.006936)(64, 0.007028)(128, 0.006966)};
+            \addplot[color=green, mark=o] coordinates {(16, 0.000335783)(32,0.00134538)(64,0.0100722)(128,0.0784007)(256,0.601008)(512,5.13331)(1024,40.9636)(2048,356.321)};
+            \legend{OpenACC, OpenCL, Séquentiel}
+        \end{axis}
+    \end{tikzpicture}
 \end{center}
 
-\subsection{OpenACC}
+\newpage
 
-\begin{figure}
-    \begin{center}
-        \begin{tikzpicture}
-            \begin{axis}[
-                xmode=log,
-                ymode=log,
-                log basis x={2},
-                title={Temps d'exécution vs taille de la matrice},
-                xlabel={Taille de la matrice},
-                ylabel={Temps d'exécution (en s)},
-                xmin=16, xmax=2048,
-                ymin=0, ymax=12,
-                xtick={16,32,64,128, 256, 512, 1024, 2048},
-                ytick={0, 0.01, 0.1, 1, 10},
-                legend pos=north west,
-                ymajorgrids=true,
-                grid style=dashed,
-                xticklabels={16,32,64,128, 256, 512, 1024, 2048},
-                ]
-                \addplot[color=blue, mark=o] coordinates {(16, 0.00338412)(32,0.000947176)(64,0.000740214)(128,0.00253456)(256,0.0116102)(512,0.0637085)(1024,1.0821)(2048,11.1209)};
-                \legend{Temps d'exécution}
-            \end{axis}
-        \end{tikzpicture}
-    \end{center}
-\end{figure}
-    
-    
-    \newpage
-    
 \section{Analyse}
 
+Tout d'abord, nous avons conduit l'étude selon les conditions suivantes : le temps séquentiel correspond à l'utilisation de l'algorithme en compilant sans OpenACC (avec nvc++), donc en utilisant un seul fil d'execution CPU. Concernant OpenACC, notre GPU (intel) n'est pas compatible avec la compilation via nvc++, il n'a été possible que de compiler en utilisant le paramètre multicore, ciblant uniquement le CPU. À noter que nous avons eu de grandes difficultés à tenter de compiler notre programme avec GCC, cependant lui non plus ne supporte pas les GPU intel. Enfin, OpenCL utilise évidemment le GPU intel, cependant nous avons remarqué que l'algorithme rencontre de nombreuses erreurs quand la matrice devient trop grande (à partir de 128 environ) d'où l'absence de données.
+
+On note l'absence des valeurs de speedup et d'efficacité, en effet, le speedup dépend du nombre de processus utilisés par rapport au temps séquentiel, hors ici pour OpenCL on compare le temps séquentiel au temps GPU (les processus fonctionnent différemment, cela n'a pas de sens de comparer), et pour OpenACC, nous utilisons un autre compilateur (NVC++) qui semble donner des performances significativement différentes.
+
+D'après les résultats obtenus, on remarque que le temps de calcul pour OpenACC est significativement plus faible que le temps séquentiel (échelle logarithmique), cependant on remarque le même taux de croissance. En effet, comme nous utilisons le même algorithme, la complexité de $O(n^3)$ reste la même. Aussi, on remarque que le temps de calcul pour OpenCL est du même ordre qu'OpenACC, cependant étant donné la limite de taille de matrice calculé, il est difficile d'analyser la tendance. Etant donné que c'est le seul algorithme que nous avons pu executer sur notre GPU, et le fonctionnement du parrallélisme GPU, nous pourrions attendre une variation du temps de calcul par rapport à la taille de la matrice significativement différent que pour les cas d'utilisation du CPU.
+
+On remarque qu'étant donné que nos algorithme sont exécutés dans un contexte relativement différent (pas le même hardware), comparer les performances des différents algorithmes est complexe. Cependant, une analyse naïve du temps de calcul par rapport à la taille de la matrice nous permet de remarquer que l'utilisation d'OpenACC et NVC++ permet un temps de calcul significativement inférieur par rapport au calcul séquentiel avec GCC. Aussi, l'utilisation d'OpenCL dans des conditions non obtimales (code peu optimisé) semble aussi performant, voir même plus performant qu'OpenACC.
 
 \section{Conclusion}
+
+Lors de ce TP, nous avons rencontré plusieurs difficultés. Dans un premier temps, pour la mise en place d'un système de compilation performant et compatible (notamment pour OpenACC), nous sommes passés par l'utilisation de NVC++, puis par la recompilation de GCC (avec les bons modules pour espérer compiler pour GPU intel), puis de nouveau par NVC++ étant donné l'absence de support des compilateurs pour notre hardware. Concernant OpenCL, novices au langage, nous avons eu des difficultés à obtenir un algorithme fonctionnel, cependant ce dernier rencontre encore aujourd'hui des limitations. Nous avons aussi essayé de profiler notre GPU pour obtenir plus d'informations quant aux performances, sans succès.
+
+Nous avons cependant pu étudier la programmation sur GPU, et obtenir des résultats de performance intéressants.
+Lors de nos recherches pour mieux comprendre l'algorithme de Gauss Jordan, nous avons trouvé le travail de \href{https://dro.deakin.edu.au/view/DU:30044550}{\textit{\underline{Lau, K. K., Kumar, M. J. et Venkatesh, S., Parallel matrix inversion techniques}}}\footnote{https://dro.deakin.edu.au/view/DU:30044550} proposant une variation à l'algorithme de Gauss Jordan, notamment pour les systèmes SIMD, atteignant une complexité temporelle de $O(n)$, avec n la taille de la matrice. Ils proposent aussi une implémentation pour les systèmes MIMD avec une complexité de $O(\frac{n}{m})$, avec n la taille de la matrice et m le nombre de machines dans le système. L'implémentant de ces variations mènerait à des performances encore un peu plus avancées, tout en conservant la méthode d'élimination Gaussienne.
 
 \end{document}
