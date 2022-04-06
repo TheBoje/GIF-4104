@@ -101,10 +101,7 @@ void invertParallel(Matrix& iA) {
 		if (lAI(lPivotIndex, k) == 0)
 			throw std::runtime_error("Matrix not invertible");
 
-		// Swap lPivotIndex and k rows
-		if (lPivotIndex != k)
-			lAI.swapRows(lPivotIndex, k);
-
+		// Swap lPivotIndex and k rows1 %
 		// Normalization
 		double lValue = lAI(k, k);
 		for (size_t j = 0; j < lAI.cols(); j++) {

@@ -7,12 +7,8 @@ CXXFLAGS=-fast -acc=multicore
 
 DEFAULT: main
 
-run: main
-	./main
-
 main: $(OBJ)
 	$(CXX) $(CXXFLAGS) -o main $(OBJ)
-	@echo "Compilation done! Use \"make run\" to run"
 
 %.o : %.cpp
 	@echo "Compiling $<"
