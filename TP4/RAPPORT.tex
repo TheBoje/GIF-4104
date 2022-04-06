@@ -188,13 +188,37 @@ Pour la première boucle récupérant l'index du maximum, il aurait été intér
     \end{tikzpicture}
 \end{center}
 
-\newpage
+
+\begin{center}
+    \begin{tikzpicture}
+        \begin{axis}[
+            xmode=log,
+            log basis x={2},
+            title={speedup vs taille de la matrice},
+            xlabel={Taille de la matrice},
+            ylabel={Speedup},
+            xmin=16, xmax=2048,
+            ymin=0, ymax=50,
+            xtick={16,32,64,128, 256, 512, 1024, 2048},
+            legend pos=north west,
+            ymajorgrids=true,
+            grid style=dashed,
+            xticklabels={16,32,64,128, 256, 512, 1024, 2048}
+            ]
+            \addplot[color=blue, mark=o] coordinates {(16, 0.1595373278)(32,0.5333032072)(64,1.222636287)(128,5.407616118)(256,33.6068443)(512,46.49947914)(1024,21.82048687)(2048,22.13916469)};
+            \addplot[color=red, mark=o] coordinates {(16, 0.08321759603)(32, 0.1939705882)(64, 1.433153102  )(128, 11.25476601)};
+            \legend{Speedup OpenACC, Speedup OpenCL}
+        \end{axis}
+    \end{tikzpicture}
+\end{center}
 
 \section{Analyse}
 
 Tout d'abord, nous avons conduit l'étude selon les conditions suivantes : le temps séquentiel correspond à l'utilisation de l'algorithme en compilant sans OpenACC (avec nvc++), donc en utilisant un seul fil d'execution CPU. Concernant OpenACC, notre GPU (intel) n'est pas compatible avec la compilation via nvc++, il n'a été possible que de compiler en utilisant le paramètre multicore, ciblant uniquement le CPU. À noter que nous avons eu de grandes difficultés à tenter de compiler notre programme avec GCC, cependant lui non plus ne supporte pas les GPU intel. Enfin, OpenCL utilise évidemment le GPU intel, cependant nous avons remarqué que l'algorithme rencontre de nombreuses erreurs quand la matrice devient trop grande (à partir de 128 environ) d'où l'absence de données.
 
-On note l'absence des valeurs de speedup et d'efficacité, en effet, l'efficacité dépend du nombre de processus utilisés par rapport au temps séquentiel, hors ici pour OpenCL on compare le temps séquentiel au temps GPU (les processus fonctionnent différemment, cela n'a pas de sens de comparer), et pour OpenACC, nous utilisons un autre compilateur (NVC++) qui semble donner des performances significativement différentes.
+Concernant le speedup, on peut constater que celui-ci est très faible au début jusqu'à une taille de matrice assez grande (128). Cela est dû à l'initialisation des threads. Comme nous avons eu du mal à lancer l'algorithme sur une carte graphique, le lancement d'un thread est significativement plus coûteux. Cela devient rentable après où l'on constate que le speedup dépace les dizaines en atteignant un pique à 46 pour OpenACC. Cependant, nous n'expliquons pas la baisse soudaine à partir d'une taille de 1024, peut-être un dépassement de la cache.
+
+On note l'absence de l'efficacité, en effet, elle dépend du nombre de processus utilisés par rapport au temps d'exécution, hors ici pour OpenCL on compare le temps séquentiel au temps GPU (les processus fonctionnent différemment, cela n'a pas de sens de comparer), et pour OpenACC, nous utilisons un autre compilateur (NVC++) qui semble donner des performances significativement différentes.
 
 D'après les résultats obtenus, on remarque que le temps de calcul pour OpenACC est significativement plus faible que le temps séquentiel (échelle logarithmique), même si le taux de croissance est identique. En effet, comme nous utilisons le même algorithme ayant une complexité de $O(n^3)$. On peut constater que le temps de calcul pour OpenCL est du même ordre qu'OpenACC, cependant, la limite de taille de matrice calculé rend difficile l'analyse de la tendance. Comme cet algorithme est le seul que nous avons
 pu executer sur notre GPU en utilisant le parrallélisme, nous pourrions nous attendre à une
