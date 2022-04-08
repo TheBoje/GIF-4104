@@ -1,0 +1,96 @@
+\documentclass[a4paper, french]{article}
+\usepackage{config}
+\author{Vincent Commin \& Louis Leenart}
+\date{\today}
+\setcounter{secnumdepth}{6}
+\begin{document}
+
+\begin{titlepage}
+    \begin{flushleft}
+        \includegraphics[width=5cm]{UL.jpg}\par
+        \centering
+
+        \vspace{13\baselineskip}
+        \HRule \\[0.4cm]
+
+        {\Huge
+        GIF-4104 - TP 5\par}
+        \vspace{0.4cm}
+        \HRule
+        \vfill
+        Équipe 1 : Vincent Commin \& Louis Leenart\medskip \par
+    \end{flushleft}
+\end{titlepage}
+
+\newpage
+\section{Introduction}
+
+Pour ce dernier TP, nous avons eu à implémenter l'algorithme de \href{https://en.wikipedia.org/wiki/PageRank}{\textit{\underline{PageRank}}} en utilisant le moteur \href{https://spark.apache.org/}{\textit{\underline{Apache Spark}}}. L'algorithme consiste à associer un rang à chaque élément d'un graphe orienté. Dans notre cas, les noeuds du graphe représentent des URL, et les arêtes sont les références vers d'autres pages. Concernant l'implémentation, Spark support de nombreux langages et nous avons choisi Java pour sa simplicité d'utilisation ainsi que notre maîtrise du langage.
+
+\section{Notre approche}
+
+Pour implémenter cet algorithme, nous avons suivi la procédure suivante:
+
+\begin{lstlisting}[style=txt]
+LECTURE fichier
+CONSTRUCTION rdd A PARTIR de fichier
+
+POUR iteration ALLANT DE 0 A 100 FAIRE
+    CALCUL rang
+FIN POUR
+
+AFFICHE lien ET rang
+\end{lstlisting}
+
+Plus précisément, le calcul du rang pour chacun des liens se faire de la manière suivante:
+
+\begin{lstlisting}[style=txt]
+// un élément = id du lien, liste des id de lien qu'il référence
+liens : LISTE COUPLE (id, LISTE id)
+rangs : LISTE COUPLE (id, rang)
+damping_factor : ENTIER
+
+contributions : LISTE COUPLE (id, contribution)
+contributions = join(liens, ranks).map(s -> {
+    s.gauche.map(n -> {
+        n, s.droit / len(s.gauche)
+    })
+})
+rangs = contributions.reduce(+).map(s -> {
+    s * damping_factor + 0.15
+})
+\end{lstlisting}
+
+Après un nombre significatif d'intérations, le contenu de `rangs` contient les couples `lien : rang`, en sachant que plus le rang tends vers 0, moins il est considéré comme intéressant, et plus il est élevé, plus il est considéré comme pertinant.
+
+\section{Machine utilisée pour les tests de performance}
+
+\begin{center}
+    \begin{tabularx}{0.6\textwidth}{|>{\raggedleft\arraybackslash}X|>{\raggedright\arraybackslash}X|}
+        \hline
+        Modèle & intel i7-8550U \\
+        \hline
+        Architecture & x86\_64 \\
+        \hline
+        OS & Archlinux \\
+        \hline
+        Fréquence CPU & 3.4GHz \\
+        \hline
+        C\oe urs (physique / logique) & 4 / 8 \\
+        \hline
+        Ram & 16 Go, 2400 $MT/s$ \\
+        \hline
+        Java & OpenJDK 11.0.15 \\
+        \hline
+        Spark Java & 3.2.0 \\
+        \hline
+    \end{tabularx}
+\end{center}
+
+\section{Résultats obtenus}
+
+\section{Analyse}
+
+\section{Conclusion}
+
+\end{document}
