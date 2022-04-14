@@ -44,7 +44,6 @@ public final class Main {
         String master = "";
         fileName = args[0];
         master = args[1];
-        System.out.println(args.length + " " + master + " " + fileName);
 
         // Spark default log level is INFO, which is not convenient for this
         // Project, so we set it to WARN only.
@@ -107,7 +106,7 @@ public final class Main {
             System.out.println(rows.get(tuple._1().intValue()).getString(3) + " : " + tuple._2() + ".");
         }
 
-        spark.sqlContext().clearCache(); // Or it'll mess benchmark results
+        spark.sqlContext().clearCache(); // Or it may mess benchmark results sometimes
         spark.stop();
         System.err.println((double) elapsedTime / 1_000_000_000.0 + " sec");
     }
